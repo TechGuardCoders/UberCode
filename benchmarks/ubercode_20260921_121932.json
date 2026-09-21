@@ -1,0 +1,25 @@
+{
+  "cold": {
+    "wall_s": 1.34,
+    "pulled": 12,
+    "cached": 0,
+    "verified": 12,
+    "bytes_pulled": 100664500
+  },
+  "warm": {
+    "wall_s": 0.79,
+    "pulled": 0,
+    "cached": 12,
+    "verified": 0,
+    "bytes_pulled": 100665704
+  },
+  "resumed": {
+    "wall_s": 0.88,
+    "pulled": 6,
+    "cached": 6,
+    "verified": 6,
+    "bytes_pulled": 50332852
+  },
+  "shard_count": 12,
+  "total_mb": 96
+}
