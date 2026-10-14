@@ -105,11 +105,23 @@ def serve_registry(port: int = 8377) -> http.server.HTTPServer:
 # ------------------------------------------------------------ client node
 
 
+# Fleet awareness: a registry can live on several nodes. Default behavior is
+# unchanged (single base URL); the fleet layer is opt-in via Fleet.
+FLEET_DEFAULTS = {
+    "glm-head": "http://192.168.0.182:8000",
+    "tensorfold": "http://192.168.0.157:8421",
+    "bonsai-1": "http://192.168.0.10:8422",
+    "bonsai-2": "http://192.168.0.144:8422",
+    "sushi": "http://192.168.0.11:8450",
+}
+
+
 class Node:
     """A compute node bringing a model up: manifest -> missing shards -> cache."""
 
-    def __init__(self, base: str, cache_dir: str):
-        self.base = base
+    def __init__(self, base: str, cache_dir: str, name: str = "node"):
+        self.base = base.rstrip("/")
+        self.name = name
         self.cache = Path(cache_dir)
         self.cache.mkdir(parents=True, exist_ok=True)
         self.bytes_pulled = 0
@@ -140,8 +152,32 @@ class Node:
             os.replace(tmp, local)   # atomic cache entry
             pulled += 1
         wall = time.perf_counter() - t0
-        return {"wall_s": round(wall, 2), "pulled": pulled, "cached": cached,
-                "verified": verified, "bytes_pulled": self.bytes_pulled}
+        return {"node": self.name, "wall_s": round(wall, 2), "pulled": pulled,
+                "cached": cached, "verified": verified,
+                "bytes_pulled": self.bytes_pulled}
+
+
+class Fleet:
+    """Bring a model up across several registry nodes, per-node checkpoint/verify.
+
+    Each node keeps its own cache dir; a node that fails (unreachable registry,
+    integrity error) is recorded and skipped, never fatal for the fleet.
+    """
+
+    def __init__(self, nodes: dict[str, str] | None = None, cache_root: str = "fleet_cache"):
+        self.targets = dict(nodes) if nodes else dict(FLEET_DEFAULTS)
+        self.cache_root = cache_root
+
+    def bring_up(self, model: str, verify: bool = True) -> dict:
+        results, failed = {}, []
+        for name, base in self.targets.items():
+            try:
+                node = Node(base, str(Path(self.cache_root) / name), name=name)
+                results[name] = node.bring_up(model, verify=verify)
+            except Exception as e:
+                failed.append({"node": name, "error": str(e)})
+        return {"nodes": results, "failed": failed,
+                "healthy": sorted(results), "model": model}
 
 
 def main():

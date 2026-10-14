@@ -39,3 +39,14 @@ uv venv --python 3.11 .venv && uv pip install pytest
 ## What's next
 
 Cold-start cost events feed Cost Peep (bring-up spend vs steady state); resume-from-partial pairs with Furnace's resume-from-checkpoint — storage and compute recovery as one story.
+
+## Fleet mode (opt-in)
+
+`Fleet` brings a model up across several registry nodes, each with its own
+cache and per-node verify/checkpoint accounting; a dead node is recorded and
+skipped, never fatal. Default single-registry behavior is unchanged.
+
+```python
+from ubercode import Fleet
+out = Fleet().bring_up("tiny-fake-llm")   # {"nodes": {...per-node...}, "failed": [...]}
+```
